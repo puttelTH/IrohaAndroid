@@ -1,0 +1,40 @@
+syntax = "proto3";
+package iroha.ordering.proto;
+
+import "iroha/protocol/transaction.proto";
+import "iroha/protocol/proposal.proto";
+import "iroha/protocol/endpoint.proto";
+import "google/protobuf/empty.proto";
+
+service OrderingGateTransportGrpc {
+  rpc onProposal (protocol.Proposal) returns (google.protobuf.Empty);
+}
+
+service OrderingServiceTransportGrpc {
+  rpc onBatch (iroha.protocol.TxList) returns (google.protobuf.Empty);
+}
+
+message ProposalRound {
+  uint64 block_round = 1;
+  uint32 reject_round = 2;
+}
+
+message BatchesRequest {
+  ProposalRound round = 1;
+  repeated protocol.Transaction transactions = 2;
+}
+
+message ProposalRequest {
+  ProposalRound round = 1;
+}
+
+message ProposalResponse {
+  oneof optional_proposal {
+    protocol.Proposal proposal = 1;
+ }
+}
+
+service OnDemandOrdering {
+  rpc SendBatches(BatchesRequest) returns (google.protobuf.Empty);
+  rpc RequestProposal(ProposalRequest) returns (ProposalResponse);
+}
