@@ -26,4 +26,6 @@
     <string name="transaction_successful">Transaction successful.</string>
     <string name="qr_decode_successful">QR decode successful.</string>
     <string name="info">Info</string>
+    <string name="iroha_url">192.168.1.55</string>
+    <integer name="iroha_port">50051</integer>
 </resources>
