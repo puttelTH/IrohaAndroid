@@ -1,30 +1,84 @@
 package com.puttel.app.iroha;
 
-import com.google.protobuf.InvalidProtocolBufferException;
+
+import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import iroha.protocol.QryResponses;
-import iroha.protocol.Queries;
+import iroha.protocol.CommandService_v1Grpc;
 import iroha.protocol.QueryService_v1Grpc;
-import jp.co.soramitsu.crypto.ed25519.Ed25519Sha3;
 
-import java.math.BigInteger;
-import java.nio.charset.Charset;
-import java.security.KeyPair;
+import java.io.Closeable;
+import java.net.URI;
+import java.net.URISyntaxException;
 
+public class IrohaAPI implements Closeable {
 
-public class IrohaAPI {
-    public static final Ed25519Sha3 crypto = new Ed25519Sha3();
-    KeyPair keysAdmin= Ed25519Sha3.keyPairFromBytes("f101537e319568c765b2cc89698325604991dca57b9716b58016b253506cab70".getBytes(Charset.forName("UTF-8")),"313a07e6384776ed95447710d15e59148473ccfc052a681317a72a69f2a49910".getBytes(Charset.forName("UTF-8")));
-    String gw="192.168.1.55";
-    //String gw="172.31.58.205";
-    String creator="admin@test";
-    String domain="utth";
-    long startQueryCounter = 1;
+    private ManagedChannel channel;
+    private URI uri;
+    private CommandService_v1Grpc.CommandService_v1BlockingStub cmdStub;
+    private CommandService_v1Grpc.CommandService_v1Stub cmdStreamingStub;
+    private QueryService_v1Grpc.QueryService_v1BlockingStub queryStub;
+    private QueryService_v1Grpc.QueryService_v1Stub queryStreamingStub;
 
-    public IrohaAPI(){
-        KeyPair aKP= crypto.generateKeypair();
-        System.out.println(aKP.getPrivate().toString()+"---"+aKP.getPublic().toString()+"----"+aKP.getPrivate().getEncoded().toString());
+    public IrohaAPI(URI uri) {
+        this(uri.getHost(), uri.getPort());
+    }
+    public IrohaAPI(String host, int port) {
+        this(
+                ManagedChannelBuilder
+                        .forAddress(host, port)
+                        .usePlaintext(true)
+                        .build()
+        );
+        try {
+            this.uri = new URI("grpc", null, host, port, null, null, null);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+    }
+    public IrohaAPI(ManagedChannel channel) {
+        this.channel = channel;
+        this.setChannelForBlockingCmdStub(channel)
+                .setChannelForBlockingQueryStub(channel)
+                .setChannelForStreamingCmdStub(channel)
+                .setChannelForStreamingQueryStub(channel);
+    }
+    public IrohaAPI setChannelForBlockingCmdStub(Channel channel) {
+        cmdStub = CommandService_v1Grpc.newBlockingStub(channel);
+        return this;
     }
 
+    public IrohaAPI setChannelForStreamingCmdStub(Channel channel) {
+        cmdStreamingStub = CommandService_v1Grpc.newStub(channel);
+        return this;
+    }
+
+    public IrohaAPI setChannelForBlockingQueryStub(Channel channel) {
+        queryStub = QueryService_v1Grpc.newBlockingStub(channel);
+        return this;
+    }
+
+    public IrohaAPI setChannelForStreamingQueryStub(Channel channel) {
+        queryStreamingStub = QueryService_v1Grpc.newStub(channel);
+        return this;
+    }
+
+    /**
+     * Close GRPC connection.
+     */
+    public void terminate() {
+        if (!channel.isTerminated()) {
+            channel.shutdownNow();
+        }
+    }
+
+    @Override
+    public void finalize() {
+        terminate();
+    }
+
+    @Override
+    public void close() {
+        terminate();
+    }
 }
