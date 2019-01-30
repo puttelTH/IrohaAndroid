@@ -1,17 +1,25 @@
 package com.puttel.app.iroha;
 
 
+import com.puttel.app.iroha.detail.StreamObserverToEmitter;
+import com.puttel.app.iroha.subscription.SubscriptionStrategy;
+import com.puttel.app.iroha.subscription.WaitUntilCompleted;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import iroha.protocol.CommandService_v1Grpc;
-import iroha.protocol.QueryService_v1Grpc;
+import io.reactivex.Observable;
+import iroha.protocol.*;
 
 import java.io.Closeable;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.KeyPair;
+
+import static com.puttel.app.iroha.Utils.createTxList;
+import static com.puttel.app.iroha.Utils.createTxStatusRequest;
 
 public class IrohaAPI implements Closeable {
+    private static final WaitUntilCompleted defaultStrategy = new WaitUntilCompleted();
 
     private ManagedChannel channel;
     private URI uri;
@@ -62,7 +70,91 @@ public class IrohaAPI implements Closeable {
         queryStreamingStub = QueryService_v1Grpc.newStub(channel);
         return this;
     }
+    /**
+     * Send transaction synchronously, then subscribe for transaction status stream.
+     *
+     * It uses {@link WaitUntilCompleted} subscription strategy by default.
+     *
+     * @param tx protobuf transaction.
+     * @return observable. Use {@code Observable.blockingSubscribe(...)} or {@code
+     * Observable.subscribe} for synchronous or asynchronous subscription.
+     */
+    public Observable<Endpoint.ToriiResponse> transaction(TransactionOuterClass.Transaction tx) {
+        return transaction(tx, defaultStrategy);
+    }
 
+    public Observable<Endpoint.ToriiResponse> transaction(TransactionOuterClass.Transaction tx,
+                                                          SubscriptionStrategy strategy) {
+        transactionSync(tx);
+        byte[] hash = Utils.hash(tx);
+        return strategy.subscribe(this, hash);
+    }
+
+    public QueryAPI getQueryAPI(String accountId, KeyPair keyPair) {
+        return new QueryAPI(this, accountId, keyPair);
+    }
+
+    /**
+     * Send transaction synchronously.
+     *
+     * Blocking call.
+     *
+     * @param tx protobuf transaction.
+     */
+    public void transactionSync(TransactionOuterClass.Transaction tx) {
+        cmdStub.torii(tx);
+    }
+
+    /**
+     * Send query synchronously.
+     *
+     * @param query protobuf query.
+     */
+    public QryResponses.QueryResponse query(Queries.Query query) {
+        return queryStub.find(query);
+    }
+
+    /**
+     * Subscribe for blocks in iroha. You need to have special permission to do that.
+     *
+     * @param query protobuf query.
+     */
+    public Observable<QryResponses.BlockQueryResponse> blocksQuery(Queries.BlocksQuery query) {
+        return Observable.create(
+                o -> queryStreamingStub.fetchCommits(query, new StreamObserverToEmitter<>(o))
+        );
+    }
+
+    /**
+     * Synchronously send list of transactions.
+     *
+     * Blocking call.
+     */
+    public void transactionListSync(Iterable<TransactionOuterClass.Transaction> txList) {
+        cmdStub.listTorii(createTxList(txList));
+    }
+
+    /**
+     * Asynchronously ask for transaction status.
+     *
+     * @param txHash hash of transaction for status query.
+     * @return {@link Observable}
+     */
+    public Observable<Endpoint.ToriiResponse> txStatus(byte[] txHash) {
+        Endpoint.TxStatusRequest req = createTxStatusRequest(txHash);
+        return Observable.create(
+                o -> cmdStreamingStub.statusStream(req, new StreamObserverToEmitter<>(o))
+        );
+    }
+
+    /**
+     * Synchronously ask to transaction status.
+     *
+     * @param txHash hash of transaction for status query
+     */
+    public Endpoint.ToriiResponse txStatusSync(byte[] txHash) {
+        return cmdStub.status(createTxStatusRequest(txHash));
+    }
     /**
      * Close GRPC connection.
      */
