@@ -7,9 +7,14 @@ import com.puttel.app.R;
 import com.puttel.app.interactor.CreateAccountInteractor;
 import com.puttel.app.interactor.GetAccountInteractor;
 import com.puttel.app.iroha.IrohaAPI;
+import com.puttel.app.iroha.Query;
+import iroha.protocol.QryResponses;
+import iroha.protocol.Queries;
+import jp.co.soramitsu.crypto.ed25519.Ed25519Sha3;
 import lombok.Setter;
 
 import javax.inject.Inject;
+import java.security.KeyPair;
 
 public class RegistrationPresenter {
     @Setter
@@ -34,13 +39,18 @@ public class RegistrationPresenter {
 
         if (!username.isEmpty()) {
             System.out.println(username+"----<<<<<");
-            IrohaAPI api = new IrohaAPI();
             getAccountInteractor.execute(username, account -> {
+                System.out.println(account.getAccountId()+"----<<<<<");
+                if (account.getAccountId().isEmpty()){
+
+                }else{
+                    didRegistrationError(new Throwable("Exit"));
+                }
 
             }, this::didRegistrationError);
 
         }else {
-            didRegistrationError(new Throwable(InApp.instance.getString(R.string.username_empty_error_dialog_message)));
+            didRegistrationError(new Throwable("Not null"));
         }
     }
     private void didRegistrationError(Throwable throwable) {
@@ -54,4 +64,5 @@ public class RegistrationPresenter {
     void onStop() {
         view = null;
     }
+
 }

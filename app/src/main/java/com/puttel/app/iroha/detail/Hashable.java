@@ -1,9 +1,9 @@
 package com.puttel.app.iroha.detail;
 
-import com.google.protobuf.GeneratedMessageV3.Builder;
+import com.google.protobuf.MessageLite.Builder;
 import org.spongycastle.jcajce.provider.digest.SHA3;
 
-public abstract class Hashable<T extends Builder<T>> {
+public abstract class Hashable<T extends Builder> {
 
     private SHA3.Digest256 digest = new SHA3.Digest256();
 

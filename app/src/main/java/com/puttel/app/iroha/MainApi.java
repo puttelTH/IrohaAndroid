@@ -1,5 +1,7 @@
 package com.puttel.app.iroha;
 
+import iroha.protocol.QryResponses;
+import iroha.protocol.Queries;
 import jp.co.soramitsu.crypto.ed25519.Ed25519Sha3;
 
 import java.security.KeyPair;
@@ -10,7 +12,8 @@ public class MainApi {
         System.out.println("Start....");
         KeyPair keysAdmin= Ed25519Sha3.keyPairFromBytes(decodeHexString("b9346eb49ea00fe4e8f6416e9411fd660a967969ecc6225698a97a06238b3ff4"),decodeHexString("46c26e4c2cd50e9552d80bd4967e30af7c0d2947d68a2c479269ee46077ff8b9"));
     }
-    private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
+    public final static char[] hexArray = "0123456789ABCDEF".toCharArray();
+
     public static String bytesToHex(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
         for ( int j = 0; j < bytes.length; j++ ) {
@@ -37,12 +40,29 @@ public class MainApi {
         int secondDigit = toDigit(hexString.charAt(1));
         return (byte) ((firstDigit << 4) + secondDigit);
     }
-    private int toDigit(char hexChar) {
+    public int toDigit(char hexChar) {
         int digit = Character.digit(hexChar, 16);
         if(digit == -1) {
             throw new IllegalArgumentException(
                     "Invalid Hexadecimal Character: "+ hexChar);
         }
         return digit;
+    }
+    public void test(){
+        KeyPair keysAdmin= Ed25519Sha3.keyPairFromBytes(decodeHexString("b9346eb49ea00fe4e8f6416e9411fd660a967969ecc6225698a97a06238b3ff4"),decodeHexString("46c26e4c2cd50e9552d80bd4967e30af7c0d2947d68a2c479269ee46077ff8b9"));
+
+        IrohaAPI api =new IrohaAPI("192.168.1.55",50051);
+        System.out.println("Api");
+        Queries.Query q = Query.builder("admin@test", 1)
+                .getAccount("admin@test")
+                .buildSigned(keysAdmin);
+
+        QryResponses.QueryResponse res = api.query(q);
+
+        QryResponses.Account asset = res.getAccountResponse().getAccount();
+        System.out.println("Asset Id = " + asset.getAccountId());
+        System.out.println("Precision = " + asset.getDomainId());
+        System.out.println("done!");
+
     }
 }
