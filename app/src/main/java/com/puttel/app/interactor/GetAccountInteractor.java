@@ -16,9 +16,17 @@ import jp.co.soramitsu.crypto.ed25519.Ed25519Sha3;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.math.BigInteger;
 import java.security.KeyPair;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
+
+import static com.puttel.app.Constants.CONNECTION_TIMEOUT_SECONDS;
+import static com.puttel.app.Constants.CREATOR;
+import static com.puttel.app.Constants.DOMAIN_ID;
+import static com.puttel.app.Constants.PRIV_KEY;
+import static com.puttel.app.Constants.PUB_KEY;
+import static com.puttel.app.Constants.QUERY_COUNTER;
 
 public class GetAccountInteractor extends SingleInteractor<QryResponses.Account, String> {
 
@@ -32,16 +40,17 @@ public class GetAccountInteractor extends SingleInteractor<QryResponses.Account,
     protected Single<QryResponses.Account> build(String accountId) {
         return Single.create(emitter -> {
             long currentTime = System.currentTimeMillis();
-            KeyPair keysAdmin= Ed25519Sha3.keyPairFromBytes(decodeHexString("b9346eb49ea00fe4e8f6416e9411fd660a967969ecc6225698a97a06238b3ff4"),decodeHexString("46c26e4c2cd50e9552d80bd4967e30af7c0d2947d68a2c479269ee46077ff8b9"));
+            KeyPair keysAdmin= Ed25519Sha3.keyPairFromBytes(decodeHexString(PRIV_KEY),decodeHexString(PUB_KEY)) ;
             ManagedChannel channel= ManagedChannelBuilder
                     .forAddress("192.168.1.55", 50051)
                     .usePlaintext(true)
                     .build();
             System.out.println("Api...");
-            Queries.Query q = new QueryBuilder("admin@test", currentTime, 1)
-                    .getAccount("admin@test")
+            Queries.Query q = new QueryBuilder(CREATOR, currentTime, QUERY_COUNTER)
+                    .getAccount(accountId + "@" + DOMAIN_ID)
                     .buildSigned(keysAdmin);
-            QueryService_v1Grpc.QueryService_v1BlockingStub queryStub = QueryService_v1Grpc.newBlockingStub(channel);
+            QueryService_v1Grpc.QueryService_v1BlockingStub queryStub = QueryService_v1Grpc.newBlockingStub(channel)
+                    .withDeadlineAfter(CONNECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             QryResponses.QueryResponse res =queryStub.find(q);
 
