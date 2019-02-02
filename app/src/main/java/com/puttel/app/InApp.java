@@ -24,8 +24,6 @@ public class InApp extends Application {
     @VisibleForTesting
     public ApplicationComponent applicationComponent;
 
-    Queries.Query q=null;
-    QryResponses.QueryResponse res=null;
     @Override
     public void onCreate() {
         super.onCreate();
