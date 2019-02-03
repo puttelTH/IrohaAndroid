@@ -11,7 +11,6 @@ import io.reactivex.Scheduler;
 import iroha.protocol.CommandService_v1Grpc;
 import iroha.protocol.TransactionOuterClass;
 import jp.co.soramitsu.crypto.ed25519.Ed25519Sha3;
-import lombok.val;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -51,6 +50,7 @@ public class CreateAccountInteractor extends CompletableInteractor<String>{
             CommandService_v1Grpc.CommandService_v1BlockingStub stub = CommandService_v1Grpc.newBlockingStub(channel)
                     .withDeadlineAfter(CONNECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             stub.torii(tx);
+
 
             // Check if it was successful
             /*
